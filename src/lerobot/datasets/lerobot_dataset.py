@@ -31,7 +31,6 @@ import torch.utils
 from huggingface_hub import HfApi, snapshot_download
 from huggingface_hub.errors import RevisionNotFoundError
 
-from lerobot.constants import HF_LEROBOT_HOME
 from lerobot.datasets.compute_stats import aggregate_stats, compute_episode_stats
 from lerobot.datasets.image_writer import AsyncImageWriter, write_image
 from lerobot.datasets.utils import (
@@ -79,6 +78,7 @@ from lerobot.datasets.video_utils import (
     get_video_duration_in_s,
     get_video_info,
 )
+from lerobot.utils.constants import HF_LEROBOT_HOME
 
 CODEBASE_VERSION = "v3.0"
 
@@ -438,6 +438,9 @@ class LeRobotDatasetMetadata:
         robot_type: str | None = None,
         root: str | Path | None = None,
         use_videos: bool = True,
+        chunks_size: int | None = None,
+        data_files_size_in_mb: int | None = None,
+        video_files_size_in_mb: int | None = None,
     ) -> "LeRobotDatasetMetadata":
         """Creates metadata for a LeRobotDataset."""
         obj = cls.__new__(cls)
@@ -452,7 +455,16 @@ class LeRobotDatasetMetadata:
         obj.tasks = None
         obj.episodes = None
         obj.stats = None
-        obj.info = create_empty_dataset_info(CODEBASE_VERSION, fps, features, use_videos, robot_type)
+        obj.info = create_empty_dataset_info(
+            CODEBASE_VERSION,
+            fps,
+            features,
+            use_videos,
+            robot_type,
+            chunks_size,
+            data_files_size_in_mb,
+            video_files_size_in_mb,
+        )
         if len(obj.video_keys) > 0 and not use_videos:
             raise ValueError()
         write_json(obj.info, obj.root / INFO_PATH)
@@ -848,11 +860,6 @@ class LeRobotDataset(torch.utils.data.Dataset):
 
         return item
 
-    def _add_padding_keys(self, item: dict, padding: dict[str, list[bool]]) -> dict:
-        for key, val in padding.items():
-            item[key] = torch.BoolTensor(val)
-        return item
-
     def __len__(self):
         return self.num_frames
 
@@ -1032,7 +1039,7 @@ class LeRobotDataset(torch.utils.data.Dataset):
             # Reset episode buffer and clean up temporary images (if not already deleted during video encoding)
             self.clear_episode_buffer(delete_images=len(self.meta.image_keys) > 0)
 
-    def _batch_save_episode_video(self, start_episode: int, end_episode: int | None = None):
+    def _batch_save_episode_video(self, start_episode: int, end_episode: int | None = None) -> None:
         """
         Batch save videos for multiple episodes.
 
@@ -1158,7 +1165,7 @@ class LeRobotDataset(torch.utils.data.Dataset):
         }
         return metadata
 
-    def _save_episode_video(self, video_key: str, episode_index: int):
+    def _save_episode_video(self, video_key: str, episode_index: int) -> dict:
         # Encode episode frames into a temporary video
         ep_path = self._encode_temporary_episode_video(video_key, episode_index)
         ep_size_in_mb = get_video_size_in_mb(ep_path)
@@ -1263,7 +1270,7 @@ class LeRobotDataset(torch.utils.data.Dataset):
         if self.image_writer is not None:
             self.image_writer.wait_until_done()
 
-    def _encode_temporary_episode_video(self, video_key: str, episode_index: int) -> dict:
+    def _encode_temporary_episode_video(self, video_key: str, episode_index: int) -> Path:
         """
         Use ffmpeg to convert frames stored as png into mp4 videos.
         Note: `encode_video_frames` is a blocking call. Making it asynchronous shouldn't speedup encoding,
@@ -1397,11 +1404,6 @@ class MultiLeRobotDataset(torch.utils.data.Dataset):
         return {repo_id: i for i, repo_id in enumerate(self.repo_ids)}
 
     @property
-    def repo_index_to_id(self):
-        """Return the inverse mapping if repo_id_to_index."""
-        return {v: k for k, v in self.repo_id_to_index}
-
-    @property
     def fps(self) -> int:
         """Frames per second used during data collection.
 
@@ -1431,7 +1433,7 @@ class MultiLeRobotDataset(torch.utils.data.Dataset):
         """Keys to access image and video stream from cameras."""
         keys = []
         for key, feats in self.features.items():
-            if isinstance(feats, (datasets.Image, VideoFrame)):
+            if isinstance(feats, (datasets.Image | VideoFrame)):
                 keys.append(key)
         return keys
 
