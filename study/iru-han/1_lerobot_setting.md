@@ -234,4 +234,6 @@ lerobot-teleoperate \
 
 
 ## 고민 후 카메라 임시 해결
+<img width="1280" height="960" alt="image" src="https://github.com/user-attachments/assets/d43ffcc9-ecdf-465a-bc69-4a5c6ac82971" />
+
 이제 카메라 하나 더 달고, 데이터를 수집하면 될 것 같다
