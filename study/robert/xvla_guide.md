@@ -132,6 +132,31 @@ Hugging Face Hub에서 다음 모델들을 사용할 수 있습니다.
 
 양팔 로봇(SO100/101 Bimanual)과 2개의 카메라(예: Top, Front) 환경에 최적화된 명령어입니다.
 
+### [참고] 양팔 로봇 텔레오퍼레이션 (조종 방법)
+수건 개기 데이터를 수집하기 위해 리더(Leader) 로봇으로 팔로워(Follower) 로봇을 조종하는 방법입니다.
+
+- **단순 조종 (테스트용)**:
+  ```bash
+  lerobot-teleoperate \
+    --robot.type=bi_so_follower \
+    --robot.left_arm_config.port=/dev/tty.follower_left \
+    --robot.right_arm_config.port=/dev/tty.follower_right \
+    --teleop.type=bi_so_leader \
+    --teleop.left_arm_config.port=/dev/tty.leader_left \
+    --teleop.right_arm_config.port=/dev/tty.leader_right \
+    --display_data=true
+  ```
+
+- **데이터 기록 시 (1단계에 적용)**:
+  `lerobot-record` 명령에 `--teleop` 설정을 추가하면 조종과 동시에 기록이 가능합니다.
+  ```bash
+  lerobot-record \
+    --robot.type=bi_so_follower \
+    --teleop.type=bi_so_leader \
+    --robot.cameras='{top: {type: opencv, index_or_path: 0}}' \
+    --dataset.repo_id=YOUR_ID/bimanual_towel_fold
+  ```
+
 ### 1단계: 데이터 수집 (Bimanual + Dual-Cam)
 양팔의 동작과 두 카메라 시점을 모두 기록해야 합니다.
 - **명령어**:
