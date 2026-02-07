@@ -160,13 +160,27 @@ Hugging Face Hub에서 다음 모델들을 사용할 수 있습니다.
 ### 1단계: 데이터 수집 (Bimanual + Dual-Cam)
 양팔의 동작과 두 카메라 시점을 모두 기록해야 합니다.
 - **명령어**:
+- **Windows (PowerShell)**:
   ```bash
   lerobot-record \
     --robot.type=bi_so_follower \
-    --robot.cameras='{top: {type: opencv, index_or_path: 0}, side: {type: opencv, index_or_path: 1}}' \
-    --dataset.repo_id=YOUR_ID/bimanual_towel_fold
+    --robot.cameras='{"top": {"type": "opencv", "index_or_path": 0}, "front": {"type": "opencv", "index_or_path": 1}}' \
+    --dataset.repo_id=bimanual_towel_fold \
+    --dataset.root=D:/lerobot_data
   ```
-  *(팁: 양손을 조화롭게 사용하여 수건을 펴고 접는 과정을 100회 정도 기록하세요.)*
+
+- **Linux (Bash/Zsh)**:
+  ```bash
+  lerobot-record \
+    --robot.type=bi_so_follower \
+    --robot.cameras='{"top": {"type": "opencv", "index_or_path": 0}, "front": {"type": "opencv", "index_or_path": 1}}' \
+    --dataset.repo_id=bimanual_towel_fold \
+    --dataset.root=~/lerobot_data
+  ```
+  *(팁: 로컬 데이터를 사용할 때는 `--dataset.repo_id`로 폴더 이름을, `--dataset.root`로 상위 폴더 경로를 지정하세요.)*
+
+> [!TIP]
+> **카메라 설정 주의사항**: `--robot.cameras`는 JSON 형식의 문자열이어야 합니다. 윈도우 환경에서는 전체를 `'`로 감싸고 내부 값들을 `"`로 감싸는 형식이 가장 안전합니다. 리눅스에서도 동일한 따옴표 규칙이 잘 작동합니다.
 
 ### 2단계: 학습 (2-Camera & Bimanual Config)
 X-VLA가 두 개의 카메라 입력을 이해하고 양팔을 제어하도록 설정합니다.
@@ -184,15 +198,28 @@ X-VLA가 두 개의 카메라 입력을 이해하고 양팔을 제어하도록 �
   - **`--policy.action_mode=auto`**: 양팔 로봇의 액션 차원을 자동으로 감지하여 최적화합니다.
 
 ### 3단계: 적용 (Inference)
-학습된 모델로 로봇을 구동합니다.
-- **명령어**:
+학습된 모델로 로봇을 구동합니다. LeRobot에서는 모델의 추론과 실제 로봇 제어 루프가 `lerobot-record.py`에 통합되어 있으므로 추론 시에도 이 명령어를 사용합니다.
+
+- **Windows (PowerShell)**:
   ```bash
   lerobot-record \
     --robot.type=bi_so_follower \
     --policy.path=outputs/xvla_training/checkpoints/last/pretrained_model \
     --dataset.single_task="양팔로 수건을 정성껏 개어줘" \
-    --robot.cameras='{top: {type: opencv, index_or_path: 0}, side: {type: opencv, index_or_path: 1}}'
+    --robot.cameras='{"top": {"type": "opencv", "index_or_path": 0}, "front": {"type": "opencv", "index_or_path": 1}}'
   ```
+
+- **Linux (Bash/Zsh)**:
+  ```bash
+  lerobot-record \
+    --robot.type=bi_so_follower \
+    --policy.path=outputs/xvla_training/checkpoints/last/pretrained_model \
+    --dataset.single_task="양팔로 수건을 정성껏 개어줘" \
+    --robot.cameras='{"top": {"type": "opencv", "index_or_path": 0}, "front": {"type": "opencv", "index_or_path": 1}}'
+  ```
+
+> [!NOTE]
+> **왜 lerobot-record인가요?**: `lerobot-record`는 단순히 저장이 아니라, 카메라 이미지 캡처 -> 정책(Policy) 추론 -> 로봇 제어 명령 전달의 전체 수순을 수행하는 엔진이기 때문입니다. `---policy.path`가 지정되면 텔레옵(사람 조종) 대신 모델이 로봇을 제어합니다.
 
 ### 4단계: 실력 향상 (DAgger)
 - 수건이 겹치거나 꼬인 특수한 상황에서 자꾸 실패한다면, 그 상황에서 수습하는 양팔 동작을 30~50개 추가 수집하여 재학습하세요. X-VLA는 이런 '에러 대처' 데이터를 아주 잘 학습합니다.
