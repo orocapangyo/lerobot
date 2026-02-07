@@ -226,7 +226,50 @@ X-VLA가 두 개의 카메라 입력을 이해하고 양팔을 제어하도록 �
 
 ---
 
-## 7. 문제 해결 (Troubleshooting)
+## 7. 데이터셋 허깅페이스 업로드 (Dataset Upload)
+
+기록된 데이터를 허깅페이스 허브(Hugging Face Hub)에 올리는 방법은 크게 두 가지가 있습니다.
+
+### 방법 1: 기록 시 자동 업로드
+`lerobot-record` 실행 시 `--dataset.push_to_hub=true` 옵션을 추가하면, 기록이 끝난 후 자동으로 업로드됩니다.
+
+```bash
+lerobot-record \
+  ... \
+  --dataset.push_to_hub=true \
+  --dataset.repo_id=YOUR_ID/dataset_name
+```
+
+### 방법 2: 로컬 데이터를 수동으로 업로드 (권장)
+이미 로컬에 저장된 데이터를 나중에 올리고 싶을 때 사용하는 가장 확실한 방법입니다. 간단한 파이썬 스크립트를 작성하여 실행하세요.
+
+**`push_dataset.py`** (작성 및 실행):
+```python
+from lerobot.datasets.lerobot_dataset import LeRobotDataset
+
+# 설정값
+REPO_ID = "YOUR_ID/bimanual_towel_fold"
+LOCAL_ROOT = "D:/lerobot_data" # 또는 리눅스의 경우 "~/lerobot_data"
+
+# 데이터셋 로드 및 업로드
+dataset = LeRobotDataset(REPO_ID, root=LOCAL_ROOT)
+dataset.push_to_hub()
+
+print(f"✅ 업로드 완료: https://huggingface.co/datasets/{REPO_ID}")
+```
+
+**실행 방법**:
+```bash
+python push_dataset.py
+```
+
+### 업로드 확인 사항
+*   **Hugging Face 로그인**: 미리 `huggingface-cli login` 명령어로 로그인이 되어 있어야 합니다.
+*   **데이터셋 카드**: `push_to_hub()`를 사용하면 데이터셋의 통계 정보와 메타데이터가 포함된 데이터셋 카드가 자동으로 생성되어 시각적으로 확인하기 편리해집니다.
+
+---
+
+## 8. 문제 해결 (Troubleshooting)
 
 - **액션 차원 불일치**: `policy.action_mode=auto`를 사용하고 있는지 확인하세요.
 - **성능 저하**: `train_soft_prompts=true`가 설정되어 있는지, 그리고 데이터 전처리 과정에서 ImageNet 정규화가 올바르게 적용되었는지 확인이 필요합니다.
